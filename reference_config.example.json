@@ -1,0 +1,17 @@
+{
+  "_comment": "Copy this to config.json and fill in your real credentials. Never commit config.json to git.",
+
+  "fire_faucet": {
+    "username": "YOUR_USERNAME_HERE",
+    "password": "YOUR_PASSWORD_HERE"
+  },
+
+  "scheduler": {
+    "poll_interval_seconds":  60,
+    "audit_interval_seconds": 3600
+  },
+
+  "android": {
+    "device": "localhost:5555"
+  }
+}
