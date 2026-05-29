@@ -1,7 +1,5 @@
 """
-Scheduler
-=========
-Async task orchestrator with timeout protection.
+Scheduler — async loop, semaphore(3), per-task timeout, scorer audit.
 """
 
 import asyncio
@@ -14,32 +12,32 @@ from core.state import TaskStateStore
 from runners.web_runner import WebRunner
 from runners.android_runner import AndroidRunner
 
+MAX_CONCURRENT = 3
+
 
 class Scheduler:
     def __init__(
         self,
-        poll_interval=60,
-        audit_interval=3600,
-        task_timeout=120,
+        poll_interval: int = 60,
+        audit_interval: int = 3600,
+        task_timeout: int = 120,
     ):
-        self.registry = TaskRegistry()
-        self.logger = RunLogger()
-        self.scorer = Scorer()
-        self.state = TaskStateStore()
-
-        self.web_runner = WebRunner()
+        self.registry       = TaskRegistry()
+        self.logger         = RunLogger()
+        self.scorer         = Scorer()
+        self.state          = TaskStateStore()
+        self.web_runner     = WebRunner()
         self.android_runner = AndroidRunner()
 
-        self.poll_interval = poll_interval
+        self.poll_interval  = poll_interval
         self.audit_interval = audit_interval
-        self.task_timeout = task_timeout
+        self.task_timeout   = task_timeout
 
-        self._last_audit = 0
-        self._running = False
+        self._last_audit = 0.0
+        self._running    = False
+        self._semaphore  = asyncio.Semaphore(MAX_CONCURRENT)
 
-        self._semaphore = asyncio.Semaphore(3)
-
-    async def run_task(self, task):
+    async def run_task(self, task) -> RunRecord:
         async with self._semaphore:
             runner = (
                 self.web_runner
@@ -54,30 +52,29 @@ class Scheduler:
             )
 
             try:
-                print(f"[RUN] {task.name}")
+                print(f"  [→] {task.name}")
 
                 result = await asyncio.wait_for(
                     runner.execute(task),
-                    timeout=self.task_timeout
+                    timeout=self.task_timeout,
                 )
 
-                record.status = "success"
-                record.earnings_usd = result.get("earnings_usd", 0)
-                record.notes = result.get("notes", "")
+                record.status       = "success"
+                record.earnings_usd = result.get("earnings_usd", 0.0)
+                record.notes        = result.get("notes", "")
 
-                state = self.state.get(task.name)
-                state["last_success"] = time.time()
-                state["failure_streak"] = 0
-                self.state.set(task.name, state)
+                self.state.reset_failure_streak(task.name)
+                print(f"  [✓] {task.name}  ${record.earnings_usd:.5f}  {record.notes}")
 
-            except Exception as e:
-                record.notes = str(e)
+            except asyncio.TimeoutError:
+                record.notes = f"Timed out after {self.task_timeout}s"
+                streak = self.state.increment_failure_streak(task.name)
+                print(f"  [✗] {task.name}  TIMEOUT  (streak={streak})")
 
-                state = self.state.get(task.name)
-                state["failure_streak"] = (
-                    state.get("failure_streak", 0) + 1
-                )
-                self.state.set(task.name, state)
+            except Exception as exc:
+                record.notes = str(exc)
+                streak = self.state.increment_failure_streak(task.name)
+                print(f"  [✗] {task.name}  {exc}  (streak={streak})")
 
             self.logger.log(record)
             self.registry.mark_run(task.id)
@@ -88,24 +85,29 @@ class Scheduler:
         due = self.registry.get_due()
 
         if not due:
-            print(f"[IDLE] sleeping {self.poll_interval}s")
+            print(f"[·] No tasks due — sleeping {self.poll_interval}s")
             return
 
+        print(f"\n[⏱] {len(due)} task(s) due")
         await asyncio.gather(
-            *[self.run_task(t) for t in due]
+            *[self.run_task(t) for t in due],
+            return_exceptions=True,
         )
 
         if time.time() - self._last_audit >= self.audit_interval:
             disabled = self.scorer.auto_disable(self.registry)
-
             if disabled:
-                print(f"[AUTO-DISABLED] {disabled}")
-
+                print(f"[⚠] Auto-disabled: {disabled}")
             self._last_audit = time.time()
 
     async def start(self):
         self._running = True
-
+        print(
+            f"[*] Scheduler started  "
+            f"poll={self.poll_interval}s  "
+            f"timeout={self.task_timeout}s  "
+            f"concurrency={MAX_CONCURRENT}"
+        )
         while self._running:
             await self.tick()
             await asyncio.sleep(self.poll_interval)

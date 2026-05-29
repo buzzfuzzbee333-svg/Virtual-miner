@@ -1,41 +1,25 @@
 """
-Android Runner
-==============
-Automates Android apps via ADB from Termux.
+Android Runner — ADB automation + Claude Vision captcha solving.
 
-Setup (one-time):
-  1. Enable Developer Options on your device
-     Settings → About Phone → tap Build Number 7×
-  2. Enable Wireless Debugging
-     Developer Options → Wireless Debugging → ON
-  3. Pair via Termux (first time only):
-     adb pair <ip>:<port>   # use the pairing code shown on screen
-  4. Connect:
-     adb connect localhost:5555
-     (or adb connect <ip>:5555 if connecting from another machine)
-  5. Verify:
-     adb devices
+Setup: pkg install android-tools && adb connect localhost:5555
 
-Install ADB in Termux:
-  pkg install android-tools
-
-Flow steps supported:
-  LAUNCH_APP     – start an Activity by package/activity name
-  TAP            – tap absolute screen coords
-  TAP_UI         – find element by text/content-desc, tap its center
-  SWIPE          – swipe gesture
-  TYPE           – type text into focused field
-  KEY            – send a keyevent code (e.g. 4 = BACK, 3 = HOME)
-  WAIT           – sleep N seconds
-  WAIT_FOR_UI    – poll UI dump until element appears (or timeout)
-  SCREENSHOT     – screencap to /sdcard/
-  CLEAR_APP      – clear app data / force-stop
-  SET_EARNINGS   – write earnings_usd
-  SET_NOTE       – write notes
+Step types:
+  NAVIGATE_URL    — open URL in Chrome via ADB intent
+  LAUNCH_APP      — start app by package name
+  CLEAR_APP       — pm clear + force-stop
+  TAP / TAP_UI    — tap by absolute coords or UI element text
+  SWIPE / SCROLL  — gesture helpers
+  TYPE / KEY      — text input and keycodes
+  WAIT / WAIT_FOR_UI — timing helpers
+  SCREENSHOT      — screencap to /sdcard/
+  VISION_TAP      — screenshot → Claude Vision → single tap
+  VISION_SEQUENCE — screenshot → Claude Vision → ordered tap sequence
+  SET_EARNINGS / SET_NOTE — result recording
 """
 
 import asyncio
 import re
+import time
 from typing import Optional
 
 
@@ -44,28 +28,29 @@ class AndroidRunner:
 
     def __init__(self, device: str = DEFAULT_DEVICE):
         self.device = device
+        self._screen_size: Optional[tuple[int, int]] = None
 
     async def execute(self, task) -> dict:
-        context = {
-            "extracted":    {},
-            "earnings_usd": 0.0,
-            "notes":        "",
-        }
+        ctx = {"extracted": {}, "earnings_usd": 0.0, "notes": ""}
         for step in task.flow.get("steps", []):
-            await self._run_step(step, context)
-        return {
-            "earnings_usd": context["earnings_usd"],
-            "notes":        context["notes"],
-        }
+            await self._run_step(step, ctx)
+        return {"earnings_usd": ctx["earnings_usd"], "notes": ctx["notes"]}
 
     async def _run_step(self, step: dict, ctx: dict):
         action = step["action"]
 
-        if action == "LAUNCH_APP":
-            pkg      = step["package"]
-            activity = step.get("activity", "")
-            if activity:
-                await self._adb(f"shell am start -n {pkg}/{activity}")
+        if action == "NAVIGATE_URL":
+            url = step["url"]
+            await self._adb(
+                f'shell am start -a android.intent.action.VIEW '
+                f'-d "{url}" com.android.chrome'
+            )
+            await asyncio.sleep(step.get("wait_seconds", 3))
+
+        elif action == "LAUNCH_APP":
+            pkg = step["package"]
+            if step.get("activity"):
+                await self._adb(f"shell am start -n {pkg}/{step['activity']}")
             else:
                 await self._adb(
                     f"shell monkey -p {pkg} -c android.intent.category.LAUNCHER 1"
@@ -91,6 +76,19 @@ class AndroidRunner:
                 f"{step['x1']} {step['y1']} {step['x2']} {step['y2']} {ms}"
             )
 
+        elif action == "SCROLL":
+            w, h = await self._get_screen_size()
+            cx     = w // 2
+            amount = step.get("amount", 500)
+            if step.get("direction", "up") == "up":
+                await self._adb(
+                    f"shell input swipe {cx} {h//2 + amount//2} {cx} {h//2 - amount//2} 400"
+                )
+            else:
+                await self._adb(
+                    f"shell input swipe {cx} {h//2 - amount//2} {cx} {h//2 + amount//2} 400"
+                )
+
         elif action == "TYPE":
             encoded = step["text"].replace(" ", "%s")
             await self._adb(f"shell input text {encoded}")
@@ -109,13 +107,17 @@ class AndroidRunner:
                 timeout=step.get("timeout_seconds", 10),
             )
             if not found and step.get("required", True):
-                raise RuntimeError(
-                    f"WAIT_FOR_UI timed out: {step}"
-                )
+                raise RuntimeError(f"WAIT_FOR_UI timed out: {step}")
 
         elif action == "SCREENSHOT":
             path = step.get("save_to", "/sdcard/miner_cap.png")
             await self._adb(f"shell screencap -p {path}")
+
+        elif action == "VISION_TAP":
+            await self._vision_tap(step)
+
+        elif action == "VISION_SEQUENCE":
+            await self._vision_sequence(step)
 
         elif action == "SET_EARNINGS":
             ctx["earnings_usd"] = float(step.get("value", 0.0))
@@ -126,18 +128,65 @@ class AndroidRunner:
         else:
             raise ValueError(f"Unknown android step action: '{action}'")
 
+    # ------------------------------------------------------------------ #
+    # Vision helpers                                                       #
+    # ------------------------------------------------------------------ #
+
+    async def _vision_tap(self, step: dict):
+        from agent.vision_solver import VisionSolver
+        remote = step.get("save_to", "/sdcard/vision_cap.png")
+        local  = f"/tmp/vm_cap_{int(time.time())}.png"
+        await self._adb(f"shell screencap -p {remote}")
+        await self._adb(f"pull {remote} {local}")
+        solver = VisionSolver()
+        x_frac, y_frac = await solver.single_tap(local, step["prompt"])
+        w, h = await self._get_screen_size()
+        px, py = int(x_frac * w), int(y_frac * h)
+        print(f"    [vision] tap → ({px}, {py})")
+        await self._adb(f"shell input tap {px} {py}")
+        if "wait_after" in step:
+            await asyncio.sleep(step["wait_after"])
+
+    async def _vision_sequence(self, step: dict):
+        from agent.vision_solver import VisionSolver
+        remote = step.get("save_to", "/sdcard/vision_seq.png")
+        local  = f"/tmp/vm_seq_{int(time.time())}.png"
+        await self._adb(f"shell screencap -p {remote}")
+        await self._adb(f"pull {remote} {local}")
+        solver = VisionSolver()
+        taps = await solver.tap_sequence(local, step["prompt"])
+        w, h = await self._get_screen_size()
+        pause = step.get("pause_between", 0.8)
+        for i, (x_frac, y_frac) in enumerate(taps):
+            px, py = int(x_frac * w), int(y_frac * h)
+            print(f"    [vision seq {i+1}/{len(taps)}] tap → ({px}, {py})")
+            await self._adb(f"shell input tap {px} {py}")
+            await asyncio.sleep(pause)
+
+    # ------------------------------------------------------------------ #
+    # ADB helpers                                                          #
+    # ------------------------------------------------------------------ #
+
     async def _adb(self, cmd: str) -> str:
-        full = f"adb -s {self.device} {cmd}"
         proc = await asyncio.create_subprocess_shell(
-            full,
+            f"adb -s {self.device} {cmd}",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await proc.communicate()
         if proc.returncode != 0:
             err = stderr.decode().strip()
-            raise RuntimeError(f"ADB failed ({full!r}): {err}")
+            raise RuntimeError(f"ADB failed ({cmd!r}): {err}")
         return stdout.decode().strip()
+
+    async def _get_screen_size(self) -> tuple[int, int]:
+        if self._screen_size:
+            return self._screen_size
+        out = await self._adb("shell wm size")
+        dims = out.split(":")[-1].strip()
+        w, h = map(int, dims.split("x"))
+        self._screen_size = (w, h)
+        return self._screen_size
 
     async def _dump_ui(self) -> str:
         return await self._adb("shell uiautomator dump /dev/tty")
@@ -177,9 +226,9 @@ class AndroidRunner:
     @staticmethod
     def _find_bounds(
         dump:         str,
-        text:         Optional[str],
-        content_desc: Optional[str],
-        resource_id:  Optional[str],
+        text:         Optional[str] = None,
+        content_desc: Optional[str] = None,
+        resource_id:  Optional[str] = None,
     ) -> Optional[tuple[int, int, int, int]]:
         def make_pattern(attr: str, value: str) -> str:
             return (

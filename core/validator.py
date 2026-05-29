@@ -1,35 +1,37 @@
 """
-Flow Validator
-=============
-Validates generated or manually created task flows before execution.
+Flow Validator — validates task flows before execution.
 """
 
 WEB_ACTIONS = {
-    "GET": ["url"],
-    "POST": ["url"],
-    "HEADER": ["headers"],
-    "WAIT": [],
+    "GET":           ["url"],
+    "POST":          ["url"],
+    "HEADER":        ["headers"],
+    "WAIT":          [],
     "ASSERT_STATUS": ["code"],
-    "ASSERT_TEXT": ["contains"],
-    "EXTRACT_JSON": ["mappings"],
+    "ASSERT_TEXT":   ["contains"],
+    "EXTRACT_JSON":  ["mappings"],
     "EXTRACT_REGEX": ["pattern", "alias"],
-    "SET_EARNINGS": [],
-    "SET_NOTE": [],
+    "SET_EARNINGS":  [],
+    "SET_NOTE":      [],
 }
 
 ANDROID_ACTIONS = {
-    "LAUNCH_APP": ["package"],
-    "CLEAR_APP": ["package"],
-    "TAP": ["x", "y"],
-    "TAP_UI": [],
-    "SWIPE": ["x1", "y1", "x2", "y2"],
-    "TYPE": ["text"],
-    "KEY": ["keycode"],
-    "WAIT": [],
-    "WAIT_FOR_UI": [],
-    "SCREENSHOT": [],
-    "SET_EARNINGS": [],
-    "SET_NOTE": [],
+    "NAVIGATE_URL":    ["url"],
+    "LAUNCH_APP":      ["package"],
+    "CLEAR_APP":       ["package"],
+    "TAP":             ["x", "y"],
+    "TAP_UI":          [],
+    "SWIPE":           ["x1", "y1", "x2", "y2"],
+    "SCROLL":          [],
+    "TYPE":            ["text"],
+    "KEY":             ["keycode"],
+    "WAIT":            [],
+    "WAIT_FOR_UI":     [],
+    "SCREENSHOT":      [],
+    "VISION_TAP":      ["prompt"],
+    "VISION_SEQUENCE": ["prompt"],
+    "SET_EARNINGS":    [],
+    "SET_NOTE":        [],
 }
 
 
@@ -55,11 +57,10 @@ def validate_task(task):
                 f"Unknown action '{action}' at step {idx}"
             )
 
-        required = actions[action]
-        for field in required:
+        for field in actions[action]:
             if field not in step:
                 raise FlowValidationError(
-                    f"Missing required field '{field}' for action '{action}'"
+                    f"Missing required field '{field}' for action '{action}' at step {idx}"
                 )
 
     return True
