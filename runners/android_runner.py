@@ -85,11 +85,11 @@ class AndroidRunner:
             amount = step.get("amount", 500)
             if step.get("direction", "up") == "up":
                 await self._adb(
-                    f"shell input swipe {cx} {h//2 + amount//2} {cx} {h//2 - amount//2} 400"
+                    f"shell input swipe {cx} {h//2 + amount//2} {cx} {h//2 - amount//2} 900"
                 )
             else:
                 await self._adb(
-                    f"shell input swipe {cx} {h//2 - amount//2} {cx} {h//2 + amount//2} 400"
+                    f"shell input swipe {cx} {h//2 - amount//2} {cx} {h//2 + amount//2} 900"
                 )
 
         elif action == "TYPE":

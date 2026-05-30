@@ -53,14 +53,6 @@ TASK = Task(
             },
             {
                 "action":  "WAIT",
-                "seconds": 1,
-            },
-            {
-                "action":  "KEY",
-                "keycode": 4,
-            },
-            {
-                "action":  "WAIT",
                 "seconds": 2,
             },
             {
