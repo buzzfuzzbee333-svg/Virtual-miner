@@ -75,6 +75,8 @@ class VisionSolver:
         text = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
         start = text.find("{")
         end   = text.rfind("}") + 1
+        if start == -1 or end == 0:
+            raise RuntimeError(f"Vision returned text instead of JSON: {raw[:300]}")
         return json.loads(text[start:end])
 
     async def single_tap(self, image_path: str, prompt: str) -> tuple[float, float]:

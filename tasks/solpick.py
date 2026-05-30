@@ -69,7 +69,17 @@ TASK = Task(
                 "save_to":    "/sdcard/sol_close_overlay.png",
                 "wait_after": 2,
             },
-            # 4. Tap the captcha widget to start it (loads icon images)
+            # 4. Scroll further down to reach the captcha area (past survey section)
+            {
+                "action":    "SCROLL",
+                "direction": "up",
+                "amount":    900,
+            },
+            {
+                "action":  "WAIT",
+                "seconds": 2,
+            },
+            # 5. Tap the captcha widget to start it (loads icon images)
             {
                 "action": "VISION_TAP",
                 "prompt": (
