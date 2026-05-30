@@ -3,7 +3,9 @@ Scheduler — async loop, semaphore(3), per-task timeout, scorer audit.
 """
 
 import asyncio
+import json
 import time
+from pathlib import Path
 
 from core.registry import TaskRegistry
 from core.logger import RunLogger, RunRecord
@@ -13,6 +15,15 @@ from runners.web_runner import WebRunner
 from runners.android_runner import AndroidRunner
 
 MAX_CONCURRENT = 3
+_CONFIG_PATH = Path(__file__).parent.parent / "config.json"
+
+
+def _adb_device() -> str:
+    try:
+        cfg = json.loads(_CONFIG_PATH.read_text())
+        return cfg.get("android", {}).get("device", "localhost:5555")
+    except Exception:
+        return "localhost:5555"
 
 
 class Scheduler:
@@ -27,7 +38,7 @@ class Scheduler:
         self.scorer         = Scorer()
         self.state          = TaskStateStore()
         self.web_runner     = WebRunner()
-        self.android_runner = AndroidRunner()
+        self.android_runner = AndroidRunner(device=_adb_device())
 
         self.poll_interval  = poll_interval
         self.audit_interval = audit_interval
