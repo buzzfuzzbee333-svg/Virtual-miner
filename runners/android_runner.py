@@ -138,14 +138,18 @@ class AndroidRunner:
     async def _vision_tap(self, step: dict):
         from agent.vision_solver import VisionSolver
         remote = step.get("save_to", "/sdcard/vision_cap.png")
-        local  = f"{_TMPDIR}/vm_cap_{int(time.time())}.png"
+        ts     = int(time.time())
+        local  = f"{_TMPDIR}/vm_cap_{ts}.png"
         await self._adb(f"shell screencap -p {remote}")
         await self._adb(f"pull {remote} {local}")
+        print(f"    [vision] screenshot saved → {local}")
         solver = VisionSolver()
         x_frac, y_frac = await solver.single_tap(local, step["prompt"])
         w, h = await self._get_screen_size()
         px, py = int(x_frac * w), int(y_frac * h)
-        print(f"    [vision] tap → ({px}, {py})")
+        print(f"    [vision] tap → ({px}, {py})  screen=({w}x{h})")
+        if px == 0 and py == 0:
+            raise RuntimeError("Vision returned (0,0) — element not found on screen")
         await self._adb(f"shell input tap {px} {py}")
         if "wait_after" in step:
             await asyncio.sleep(step["wait_after"])

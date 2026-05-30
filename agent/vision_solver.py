@@ -80,7 +80,11 @@ class VisionSolver:
     async def single_tap(self, image_path: str, prompt: str) -> tuple[float, float]:
         raw    = await self._call(image_path, prompt + _COORD_SUFFIX)
         result = self._parse_json(raw)
-        return float(result["x"]), float(result["y"])
+        x = result.get("x")
+        y = result.get("y")
+        if x is None or y is None:
+            raise RuntimeError(f"Vision: element not found. Response: {raw[:200]}")
+        return float(x), float(y)
 
     async def tap_sequence(
         self, image_path: str, prompt: str
