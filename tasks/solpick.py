@@ -58,6 +58,18 @@ TASK = Task(
             {
                 "action": "VISION_TAP",
                 "prompt": (
+                    "There is a CPX Research survey panel open on screen. "
+                    "Find the X or × close/dismiss button for this panel. "
+                    "It appears as a small × symbol in the top-left corner of the panel, "
+                    "just above or inside the green CPX Research header bar. "
+                    "Return the coordinates of that × close button."
+                ),
+                "save_to":    "/sdcard/sol_close_overlay.png",
+                "wait_after": 2,
+            },
+            {
+                "action": "VISION_TAP",
+                "prompt": (
                     "This is an IconCaptcha. Find the row of small icon images. "
                     "Select (tap) the icon that appears the fewest number of times "
                     "compared to the others. Return its center coordinates."
