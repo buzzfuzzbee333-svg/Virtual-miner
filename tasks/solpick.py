@@ -32,11 +32,13 @@ TASK = Task(
     tags             = ["faucet", "sol", "android", "fast"],
     flow             = {
         "steps": [
+            # 1. Load faucet page
             {
                 "action":       "NAVIGATE_URL",
                 "url":          "https://solpick.io/faucet.php",
                 "wait_seconds": 5,
             },
+            # 2. Scroll down past survey widgets to captcha area
             {
                 "action":    "SCROLL",
                 "direction": "up",
@@ -55,42 +57,53 @@ TASK = Task(
                 "action":  "WAIT",
                 "seconds": 2,
             },
+            # 3. Close CPX Research survey overlay triggered by scrolling
             {
                 "action": "VISION_TAP",
                 "prompt": (
-                    "There is a CPX Research survey panel open on screen. "
-                    "Find the X or × close/dismiss button for this panel. "
-                    "It appears as a small × symbol in the top-left corner of the panel, "
-                    "just above or inside the green CPX Research header bar. "
-                    "Return the coordinates of that × close button."
+                    "A CPX Research survey panel is open on screen covering the page. "
+                    "Find the × or X close button to dismiss it. "
+                    "It is a small × in the top-left corner just above the green "
+                    "CPX Research header bar. Tap it to close the panel."
                 ),
                 "save_to":    "/sdcard/sol_close_overlay.png",
                 "wait_after": 2,
             },
+            # 4. Tap the captcha widget to start it (loads icon images)
             {
                 "action": "VISION_TAP",
                 "prompt": (
-                    "This is an IconCaptcha. Find the row of small icon images. "
-                    "Select (tap) the icon that appears the fewest number of times "
-                    "compared to the others. Return its center coordinates."
+                    "Find the IconCaptcha widget. It shows a blue circular icon "
+                    "and text saying 'VERIFY THAT YOU ARE HUMAN' or 'IconCaptcha'. "
+                    "Tap the blue circle or the widget area to start the captcha "
+                    "and load the icon images."
                 ),
-                "save_to":    "/sdcard/sol_captcha.png",
-                "wait_after": 1,
+                "save_to":    "/sdcard/sol_captcha_start.png",
+                "wait_after": 3,
             },
-            {
-                "action":  "WAIT",
-                "seconds": 1,
-            },
+            # 5. Select the correct icon (appears fewest times)
             {
                 "action": "VISION_TAP",
                 "prompt": (
-                    "Find the large blue claim button. It may say '+100% REWARDS', "
-                    "'CLAIM', or show a reward percentage. "
-                    "Return the center coordinates of this button."
+                    "The IconCaptcha is now showing a row of small icon images. "
+                    "Count how many times each unique icon appears. "
+                    "Tap the icon that appears the fewest number of times."
+                ),
+                "save_to":    "/sdcard/sol_captcha_select.png",
+                "wait_after": 2,
+            },
+            # 6. Tap the green Claim button
+            {
+                "action": "VISION_TAP",
+                "prompt": (
+                    "Find the green 'Claim' button on the page. "
+                    "It is a wide green rectangular button with white text that says 'Claim'. "
+                    "Tap its center."
                 ),
                 "save_to":    "/sdcard/sol_claim_btn.png",
                 "wait_after": 3,
             },
+            # 7. Wait for success toast
             {
                 "action":          "WAIT_FOR_UI",
                 "text":            "Success",
@@ -99,11 +112,11 @@ TASK = Task(
             },
             {
                 "action": "SET_EARNINGS",
-                "value":  0.000162,
+                "value":  0.0000025,
             },
             {
                 "action": "SET_NOTE",
-                "text":   "Solpick SOL claim — 0.000002 SOL",
+                "text":   "Solpick SOL claim",
             },
         ]
     },
