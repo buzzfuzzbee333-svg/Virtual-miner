@@ -40,7 +40,7 @@ TASK = Task(
             {
                 "action":    "SCROLL",
                 "direction": "up",
-                "amount":    800,
+                "amount":    700,
             },
             {
                 "action":  "WAIT",
@@ -49,7 +49,15 @@ TASK = Task(
             {
                 "action":    "SCROLL",
                 "direction": "up",
-                "amount":    800,
+                "amount":    700,
+            },
+            {
+                "action":  "WAIT",
+                "seconds": 1,
+            },
+            {
+                "action":  "KEY",
+                "keycode": 4,
             },
             {
                 "action":  "WAIT",
