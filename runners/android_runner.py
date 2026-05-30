@@ -18,9 +18,12 @@ Step types:
 """
 
 import asyncio
+import os
 import re
 import time
 from typing import Optional
+
+_TMPDIR = os.environ.get("TMPDIR", "/data/data/com.termux/files/usr/tmp")
 
 
 class AndroidRunner:
@@ -135,7 +138,7 @@ class AndroidRunner:
     async def _vision_tap(self, step: dict):
         from agent.vision_solver import VisionSolver
         remote = step.get("save_to", "/sdcard/vision_cap.png")
-        local  = f"/tmp/vm_cap_{int(time.time())}.png"
+        local  = f"{_TMPDIR}/vm_cap_{int(time.time())}.png"
         await self._adb(f"shell screencap -p {remote}")
         await self._adb(f"pull {remote} {local}")
         solver = VisionSolver()
@@ -150,7 +153,7 @@ class AndroidRunner:
     async def _vision_sequence(self, step: dict):
         from agent.vision_solver import VisionSolver
         remote = step.get("save_to", "/sdcard/vision_seq.png")
-        local  = f"/tmp/vm_seq_{int(time.time())}.png"
+        local  = f"{_TMPDIR}/vm_seq_{int(time.time())}.png"
         await self._adb(f"shell screencap -p {remote}")
         await self._adb(f"pull {remote} {local}")
         solver = VisionSolver()
