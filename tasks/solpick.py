@@ -69,11 +69,29 @@ TASK = Task(
                 "save_to":    "/sdcard/sol_close_overlay.png",
                 "wait_after": 2,
             },
-            # 4. Scroll further down to reach the captcha area (past survey section)
+            # 4. Scroll aggressively to get past all survey widgets to captcha
             {
                 "action":    "SCROLL",
                 "direction": "up",
-                "amount":    900,
+                "amount":    1200,
+            },
+            {
+                "action":  "WAIT",
+                "seconds": 1,
+            },
+            {
+                "action":    "SCROLL",
+                "direction": "up",
+                "amount":    1200,
+            },
+            {
+                "action":  "WAIT",
+                "seconds": 1,
+            },
+            {
+                "action":    "SCROLL",
+                "direction": "up",
+                "amount":    1000,
             },
             {
                 "action":  "WAIT",
@@ -83,10 +101,11 @@ TASK = Task(
             {
                 "action": "VISION_TAP",
                 "prompt": (
-                    "Find the IconCaptcha widget. It shows a blue circular icon "
-                    "and text saying 'VERIFY THAT YOU ARE HUMAN' or 'IconCaptcha'. "
-                    "Tap the blue circle or the widget area to start the captcha "
-                    "and load the icon images."
+                    "Find the IconCaptcha widget on this page. "
+                    "It is a small rectangular box with a blue shield or circular icon "
+                    "on the left and text like 'IconCaptcha' or 'VERIFY THAT YOU ARE HUMAN'. "
+                    "It is NOT a survey offer (ignore CPX Research, TimeWall, BitLabs banners). "
+                    "Tap the center of the IconCaptcha box to activate it."
                 ),
                 "save_to":    "/sdcard/sol_captcha_start.png",
                 "wait_after": 3,
