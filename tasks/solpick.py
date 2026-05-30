@@ -35,12 +35,21 @@ TASK = Task(
             {
                 "action":       "NAVIGATE_URL",
                 "url":          "https://solpick.io/faucet.php",
-                "wait_seconds": 4,
+                "wait_seconds": 5,
             },
             {
                 "action":    "SCROLL",
                 "direction": "up",
-                "amount":    600,
+                "amount":    800,
+            },
+            {
+                "action":  "WAIT",
+                "seconds": 1,
+            },
+            {
+                "action":    "SCROLL",
+                "direction": "up",
+                "amount":    800,
             },
             {
                 "action":  "WAIT",
