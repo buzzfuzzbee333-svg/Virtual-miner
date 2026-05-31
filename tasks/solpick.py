@@ -68,12 +68,7 @@ TASK = Task(
                 "wait_seconds": 5,
             },
 
-            # 2. Tap the fixed Solpick header bar to give Chrome web-content
-            #    keyboard focus before sending PAGE_DOWN keyevents.
-            {"action": "TAP", "x": 540, "y": 280},
-            _wait(1),
-
-            # 3. 2× PAGE_DOWN reaches the very bottom of the page.
+            # 2. 2× PAGE_DOWN reaches the very bottom of the page.
             #    (Keyboard events don't trigger survey widget lazy-loading,
             #     so the page is short and 2 presses is enough.)
             _pgdn(), _wait(1),
