@@ -92,7 +92,7 @@ TASK = Task(
                     "Tap the center of the IconCaptcha box to activate it."
                 ),
                 "save_to":    "/sdcard/sol_captcha_start.png",
-                "wait_after": 3,
+                "wait_after": 7,
             },
 
             # 3. Select the icon that appears fewest times
