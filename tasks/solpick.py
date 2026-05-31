@@ -73,14 +73,16 @@ TASK = Task(
             {"action": "TAP", "x": 540, "y": 280},
             _wait(1),
 
-            # 3. PAGE_DOWN ×4 — keyboard scroll bypasses survey widget divs.
-            #    Each press moves ~one viewport height (~2000px on this device).
-            #    Close any overlay that pops up between passes.
-            _pgdn(), _wait(1),
-            _pgdn(), _wait(1),
-            _close(), _wait(1),
+            # 3. 2× PAGE_DOWN reaches the very bottom of the page.
+            #    (Keyboard events don't trigger survey widget lazy-loading,
+            #     so the page is short and 2 presses is enough.)
             _pgdn(), _wait(1),
             _pgdn(), _wait(2),
+
+            # 4. Scroll back UP ~700px — the captcha is just above the
+            #    Claim button which appears at the top after step 3.
+            {"action": "SCROLL", "direction": "down", "amount": 700},
+            _wait(1),
             _close(), _wait(1),
 
             # 4. Tap IconCaptcha to activate and load the icon images
