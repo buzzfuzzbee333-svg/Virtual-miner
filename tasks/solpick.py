@@ -2,12 +2,13 @@
 Solpick.io — SOL faucet, Android task, 75s cooldown.
 
 Flow:
-  1. Navigate to faucet page
-  2. Scroll in 5 passes of 900px; after each pass optionally close the CPX
-     Research overlay (required=False so the step is silently skipped when
-     the overlay is absent).
-  3. Tap IconCaptcha to load icons, select the least-frequent icon.
-  4. Tap the green Claim button, wait for success.
+  1. Navigate to faucet page.
+  2. Scroll in 5 passes of 900px; after each pass optionally close any CPX
+     Research overlay (required=False — silently skipped when absent).
+  3. Scroll back UP 600px so the IconCaptcha widget is in the viewport
+     (the 5 passes overshoot to the Claim button area).
+  4. Tap the IconCaptcha widget to activate it, select the least-frequent
+     icon image, then tap the Claim button.
 
 Run this file directly to register the task:
   python tasks/solpick.py
@@ -31,16 +32,16 @@ _CLOSE_OVERLAY_PROMPT = (
 
 def _close():
     return {
-        "action":   "VISION_TAP",
-        "prompt":   _CLOSE_OVERLAY_PROMPT,
-        "save_to":  "/sdcard/sol_overlay.png",
-        "required": False,
+        "action":     "VISION_TAP",
+        "prompt":     _CLOSE_OVERLAY_PROMPT,
+        "save_to":    "/sdcard/sol_overlay.png",
+        "required":   False,
         "wait_after": 1,
     }
 
 
-def _scroll(amount=900):
-    return {"action": "SCROLL", "direction": "up", "amount": amount}
+def _scroll(amount=900, direction="up"):
+    return {"action": "SCROLL", "direction": direction, "amount": amount}
 
 
 def _wait(s=1):
@@ -63,65 +64,57 @@ TASK = Task(
                 "wait_seconds": 5,
             },
 
-            # 2-6. Five scroll passes — close any CPX overlay after each
+            # 2-6. Five scroll passes to get past surveys; close any CPX overlay
             _scroll(900), _wait(1), _close(), _wait(1),
             _scroll(900), _wait(1), _close(), _wait(1),
             _scroll(900), _wait(1), _close(), _wait(1),
             _scroll(900), _wait(1), _close(), _wait(1),
             _scroll(900), _wait(2), _close(), _wait(2),
 
-            # 7. Tap the captcha area to activate it (may open a type-selector menu)
+            # 7. Scroll back UP 600px — the 5 passes overshoot past the captcha
+            #    to the Claim button; this brings the IconCaptcha widget into view.
+            _scroll(600, direction="down"), _wait(2),
+
+            # 8. Tap the IconCaptcha widget to activate and load icon images
             {
                 "action": "VISION_TAP",
                 "prompt": (
-                    "Find the captcha area near the bottom of the page. "
-                    "It may appear as the IconCaptcha widget (blue shield + "
-                    "'VERIFY THAT YOU ARE HUMAN') or as a captcha type selector button. "
-                    "Tap it."
+                    "Find the IconCaptcha widget. It is a rectangular box with "
+                    "a blue shield icon on the left and text "
+                    "'VERIFY THAT YOU ARE HUMAN' or 'IconCaptcha'. "
+                    "Do NOT tap the Claim button or any survey widget. "
+                    "Tap the center of the IconCaptcha box."
                 ),
                 "save_to":    "/sdcard/sol_captcha_start.png",
-                "wait_after": 2,
-            },
-
-            # 8. If a captcha type-selector menu appeared, choose IconCaptcha
-            {
-                "action": "VISION_TAP",
-                "prompt": (
-                    "A captcha type selector or dropdown is now visible on screen with "
-                    "options like 'IconCaptcha', 'reCaptcha', etc. "
-                    "Tap the 'IconCaptcha' option to select it. "
-                    "If no such menu is visible, respond with {\"x\": -1, \"y\": -1}."
-                ),
-                "save_to":    "/sdcard/sol_captcha_type.png",
-                "required":   False,
                 "wait_after": 3,
             },
 
-            # 8. Select the icon that appears fewest times
+            # 9. Select the icon that appears fewest times
             {
                 "action": "VISION_TAP",
                 "prompt": (
-                    "The IconCaptcha is showing a row of small icon images. "
+                    "The IconCaptcha is now showing a row of small icon images. "
                     "Count how many times each unique icon appears across the row. "
-                    "Tap the one icon that appears the fewest number of times."
+                    "Tap the one icon that appears the fewest number of times. "
+                    "Do NOT tap any button or text — only tap one of the icon images."
                 ),
                 "save_to":    "/sdcard/sol_captcha_select.png",
                 "wait_after": 2,
             },
 
-            # 9. Tap the green Claim button
+            # 10. Tap the Claim / Claim Now button
             {
                 "action": "VISION_TAP",
                 "prompt": (
-                    "Find the green 'Claim' button. "
-                    "It is a wide green rectangular button with white text reading 'Claim'. "
+                    "Find the 'Claim' or 'Claim Now' button on the page. "
+                    "It is a wide green or blue rectangular button with white text. "
                     "Tap its center."
                 ),
                 "save_to":    "/sdcard/sol_claim_btn.png",
                 "wait_after": 3,
             },
 
-            # 10. Wait for success toast
+            # 11. Wait for success toast
             {
                 "action":          "WAIT_FOR_UI",
                 "text":            "Success",
