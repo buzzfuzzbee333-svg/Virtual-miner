@@ -3,12 +3,11 @@ Solpick.io — SOL faucet, Android task, 75s cooldown.
 
 Flow:
   1. Navigate to faucet page.
-  2. Scroll in 5 passes of 900px; after each pass optionally close any CPX
-     Research overlay (required=False — silently skipped when absent).
-  3. Scroll back UP 600px so the IconCaptcha widget is in the viewport
-     (the 5 passes overshoot to the Claim button area).
-  4. Tap the IconCaptcha widget to activate it, select the least-frequent
-     icon image, then tap the Claim button.
+  2. Scroll 8 passes × 900px (7200px total) past the survey offerwall section.
+     The first 3 passes close any CPX Research overlay after each scroll.
+     Passes 4-8 scroll without overlay checks (surveys are behind us by then).
+  3. Tap the IconCaptcha widget, select the least-frequent icon.
+  4. Tap the Claim button.
 
 Run this file directly to register the task:
   python tasks/solpick.py
@@ -40,8 +39,8 @@ def _close():
     }
 
 
-def _scroll(amount=900, direction="up"):
-    return {"action": "SCROLL", "direction": direction, "amount": amount}
+def _scroll(amount=900):
+    return {"action": "SCROLL", "direction": "up", "amount": amount}
 
 
 def _wait(s=1):
@@ -64,18 +63,19 @@ TASK = Task(
                 "wait_seconds": 5,
             },
 
-            # 2-6. Five scroll passes to get past surveys; close any CPX overlay
-            _scroll(900), _wait(1), _close(), _wait(1),
-            _scroll(900), _wait(1), _close(), _wait(1),
-            _scroll(900), _wait(1), _close(), _wait(1),
-            _scroll(900), _wait(1), _close(), _wait(1),
-            _scroll(900), _wait(2), _close(), _wait(2),
+            # Passes 1-3: scroll + close any CPX Research overlay
+            _scroll(), _wait(1), _close(), _wait(1),
+            _scroll(), _wait(1), _close(), _wait(1),
+            _scroll(), _wait(1), _close(), _wait(1),
 
-            # 7. Scroll back UP 600px — the 5 passes overshoot past the captcha
-            #    to the Claim button; this brings the IconCaptcha widget into view.
-            _scroll(600, direction="down"), _wait(2),
+            # Passes 4-8: raw scrolls, no overlay check (past the survey zone)
+            _scroll(), _wait(1),
+            _scroll(), _wait(1),
+            _scroll(), _wait(1),
+            _scroll(), _wait(1),
+            _scroll(), _wait(2),
 
-            # 8. Tap the IconCaptcha widget to activate and load icon images
+            # 2. Tap IconCaptcha to activate it and load the icon images
             {
                 "action": "VISION_TAP",
                 "prompt": (
@@ -89,24 +89,23 @@ TASK = Task(
                 "wait_after": 3,
             },
 
-            # 9. Select the icon that appears fewest times
+            # 3. Select the icon that appears fewest times
             {
                 "action": "VISION_TAP",
                 "prompt": (
-                    "The IconCaptcha is now showing a row of small icon images. "
-                    "Count how many times each unique icon appears across the row. "
-                    "Tap the one icon that appears the fewest number of times. "
-                    "Do NOT tap any button or text — only tap one of the icon images."
+                    "The IconCaptcha is showing a row of small icon images. "
+                    "Count how many times each unique icon appears. "
+                    "Tap the one icon that appears the fewest number of times."
                 ),
                 "save_to":    "/sdcard/sol_captcha_select.png",
                 "wait_after": 2,
             },
 
-            # 10. Tap the Claim / Claim Now button
+            # 4. Tap the Claim / Claim Now button
             {
                 "action": "VISION_TAP",
                 "prompt": (
-                    "Find the 'Claim' or 'Claim Now' button on the page. "
+                    "Find the 'Claim' or 'Claim Now' button. "
                     "It is a wide green or blue rectangular button with white text. "
                     "Tap its center."
                 ),
@@ -114,7 +113,7 @@ TASK = Task(
                 "wait_after": 3,
             },
 
-            # 11. Wait for success toast
+            # 5. Wait for success toast
             {
                 "action":          "WAIT_FOR_UI",
                 "text":            "Success",
