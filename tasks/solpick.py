@@ -70,16 +70,30 @@ TASK = Task(
             _scroll(900), _wait(1), _close(), _wait(1),
             _scroll(900), _wait(2), _close(), _wait(2),
 
-            # 7. Tap the captcha widget to load icons
+            # 7. Tap the captcha area to activate it (may open a type-selector menu)
             {
                 "action": "VISION_TAP",
                 "prompt": (
-                    "Find the IconCaptcha widget. It is a rectangular box with a blue "
-                    "shield icon on the left and text 'VERIFY THAT YOU ARE HUMAN' or "
-                    "'IconCaptcha'. Ignore any CPX Research, TimeWall, or BitLabs survey "
-                    "banners. Tap the center of the IconCaptcha box."
+                    "Find the captcha area near the bottom of the page. "
+                    "It may appear as the IconCaptcha widget (blue shield + "
+                    "'VERIFY THAT YOU ARE HUMAN') or as a captcha type selector button. "
+                    "Tap it."
                 ),
                 "save_to":    "/sdcard/sol_captcha_start.png",
+                "wait_after": 2,
+            },
+
+            # 8. If a captcha type-selector menu appeared, choose IconCaptcha
+            {
+                "action": "VISION_TAP",
+                "prompt": (
+                    "A captcha type selector or dropdown is now visible on screen with "
+                    "options like 'IconCaptcha', 'reCaptcha', etc. "
+                    "Tap the 'IconCaptcha' option to select it. "
+                    "If no such menu is visible, respond with {\"x\": -1, \"y\": -1}."
+                ),
+                "save_to":    "/sdcard/sol_captcha_type.png",
+                "required":   False,
                 "wait_after": 3,
             },
 
