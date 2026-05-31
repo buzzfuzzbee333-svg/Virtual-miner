@@ -74,11 +74,12 @@ TASK = Task(
             _scroll(), _wait(1), _close(), _wait(1),
             _scroll(), _wait(1), _close(), _wait(1),
 
-            # Passes 5-7: raw scrolls — past all survey widgets by now
+            # Passes 5-8: raw scrolls — past all survey widgets by now
             _scroll(), _wait(1),
             _scroll(), _wait(1),
             _scroll(), _wait(1),
-            # Extra 700px to land in the captcha zone (7000px total)
+            _scroll(), _wait(1),
+            # Extra 700px to land just past the payout table at the captcha (7900px total)
             _scroll(700), _wait(2),
 
             # 2. Tap IconCaptcha to activate and load the icon images
