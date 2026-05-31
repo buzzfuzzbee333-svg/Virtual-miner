@@ -3,9 +3,9 @@ Solpick.io — SOL faucet, Android task, 75s cooldown.
 
 Flow:
   1. Navigate to faucet page.
-  2. Scroll 8 passes × 900px (7200px total) past the survey offerwall section.
-     The first 3 passes close any CPX Research overlay after each scroll.
-     Passes 4-8 scroll without overlay checks (surveys are behind us by then).
+  2. Scroll 7 passes × 900px (6300px total).
+     Passes 1-4 close any overlay (CPX Research, country surveys, etc.)
+     Passes 5-7 are raw scrolls (past the survey section by then).
   3. Tap the IconCaptcha widget, select the least-frequent icon.
   4. Tap the Claim button.
 
@@ -20,12 +20,17 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.registry import Task, TaskRegistry
 
+# General overlay close: handles CPX Research, country-selection surveys,
+# or any other modal that covers the page during scrolling.
 _CLOSE_OVERLAY_PROMPT = (
-    "Look for a CPX Research survey panel covering the page. "
-    "If it is open, find its close button — a small × or X "
-    "in the top-left corner just above the green CPX Research header bar. "
-    "Tap it to dismiss the panel. "
-    'If no overlay is visible, respond with {"x": -1, "y": -1}.'
+    "Look for any popup, modal, or overlay currently covering the main page content. "
+    "This could be a CPX Research survey panel, a country-selection survey "
+    "('Are you from the United States?'), or any other panel sitting on top of the page. "
+    "If an overlay IS present: find the closest thing to a close/dismiss button "
+    "— an × or X, a 'No thanks', 'Cancel', or 'Close' label, or any small button "
+    "in a corner of the overlay. Tap it. "
+    "If NO overlay is visible (the main Solpick faucet page is showing normally), "
+    'respond with {"x": -1, "y": -1}.'
 )
 
 
@@ -63,27 +68,26 @@ TASK = Task(
                 "wait_seconds": 5,
             },
 
-            # Passes 1-3: scroll + close any CPX Research overlay
+            # Passes 1-4: scroll + close any overlay that appears
+            _scroll(), _wait(1), _close(), _wait(1),
             _scroll(), _wait(1), _close(), _wait(1),
             _scroll(), _wait(1), _close(), _wait(1),
             _scroll(), _wait(1), _close(), _wait(1),
 
-            # Passes 4-8: raw scrolls, no overlay check (past the survey zone)
-            _scroll(), _wait(1),
-            _scroll(), _wait(1),
+            # Passes 5-7: raw scrolls — past all survey widgets by now
             _scroll(), _wait(1),
             _scroll(), _wait(1),
             _scroll(), _wait(2),
 
-            # 2. Tap IconCaptcha to activate it and load the icon images
+            # 2. Tap IconCaptcha to activate and load the icon images
             {
                 "action": "VISION_TAP",
                 "prompt": (
-                    "Find the IconCaptcha widget. It is a rectangular box with "
-                    "a blue shield icon on the left and text "
+                    "Find the IconCaptcha widget on screen. It is a small rectangular "
+                    "box with a blue shield/circle icon on the left and text "
                     "'VERIFY THAT YOU ARE HUMAN' or 'IconCaptcha'. "
-                    "Do NOT tap the Claim button or any survey widget. "
-                    "Tap the center of the IconCaptcha box."
+                    "It is NOT the Claim button and NOT a survey widget. "
+                    "Tap the center of the IconCaptcha box to activate it."
                 ),
                 "save_to":    "/sdcard/sol_captcha_start.png",
                 "wait_after": 3,
@@ -93,7 +97,7 @@ TASK = Task(
             {
                 "action": "VISION_TAP",
                 "prompt": (
-                    "The IconCaptcha is showing a row of small icon images. "
+                    "The IconCaptcha is now showing a row of small icon images. "
                     "Count how many times each unique icon appears. "
                     "Tap the one icon that appears the fewest number of times."
                 ),
