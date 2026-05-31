@@ -3,11 +3,13 @@ Solpick.io — SOL faucet, Android task, 75s cooldown.
 
 Flow:
   1. Navigate to faucet page.
-  2. Scroll 7 passes × 900px (6300px total).
-     Passes 1-4 close any overlay (CPX Research, country surveys, etc.)
-     Passes 5-7 are raw scrolls (past the survey section by then).
-  3. Tap the IconCaptcha widget, select the least-frequent icon.
-  4. Tap the Claim button.
+  2. Tap the fixed Solpick header to give Chrome web-content keyboard focus.
+  3. Use PAGE_DOWN keyevents (not swipe gestures) to scroll past the survey
+     section. Keyboard events scroll the main page viewport and never interact
+     with survey widget scroll containers, so they can't accidentally click
+     survey items or get stuck scrolling inside a widget div.
+  4. Close any CPX Research / survey overlay that appeared mid-scroll.
+  5. Tap IconCaptcha, select the least-frequent icon, tap Claim.
 
 Run this file directly to register the task:
   python tasks/solpick.py
@@ -20,16 +22,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.registry import Task, TaskRegistry
 
-# General overlay close: handles CPX Research, country-selection surveys,
-# or any other modal that covers the page during scrolling.
 _CLOSE_OVERLAY_PROMPT = (
     "Look for any popup, modal, or overlay currently covering the main page content. "
-    "This could be a CPX Research survey panel, a country-selection survey "
-    "('Are you from the United States?'), or any other panel sitting on top of the page. "
-    "If an overlay IS present: find the closest thing to a close/dismiss button "
-    "— an × or X, a 'No thanks', 'Cancel', or 'Close' label, or any small button "
-    "in a corner of the overlay. Tap it. "
-    "If NO overlay is visible (the main Solpick faucet page is showing normally), "
+    "This could be a CPX Research survey panel, a country-selection survey, "
+    "or any other panel sitting on top of the page. "
+    "If an overlay IS present: find the closest close/dismiss button "
+    "— an × or X, 'No thanks', 'Cancel', or 'Close'. Tap it. "
+    "If NO overlay is visible, "
     'respond with {"x": -1, "y": -1}.'
 )
 
@@ -44,8 +43,9 @@ def _close():
     }
 
 
-def _scroll(amount=900):
-    return {"action": "SCROLL", "direction": "up", "amount": amount}
+def _pgdn():
+    # Scroll main page via keyboard — never touches survey widget scroll containers
+    return {"action": "KEY", "keycode": 93}
 
 
 def _wait(s=1):
@@ -68,21 +68,22 @@ TASK = Task(
                 "wait_seconds": 5,
             },
 
-            # Passes 1-4: scroll + close any overlay that appears
-            _scroll(), _wait(1), _close(), _wait(1),
-            _scroll(), _wait(1), _close(), _wait(1),
-            _scroll(), _wait(1), _close(), _wait(1),
-            _scroll(), _wait(1), _close(), _wait(1),
+            # 2. Tap the fixed Solpick header bar to give Chrome web-content
+            #    keyboard focus before sending PAGE_DOWN keyevents.
+            {"action": "TAP", "x": 540, "y": 280},
+            _wait(1),
 
-            # Passes 5-8: raw scrolls — past all survey widgets by now
-            _scroll(), _wait(1),
-            _scroll(), _wait(1),
-            _scroll(), _wait(1),
-            _scroll(), _wait(1),
-            # Extra 700px to land just past the payout table at the captcha (7900px total)
-            _scroll(700), _wait(2),
+            # 3. PAGE_DOWN ×4 — keyboard scroll bypasses survey widget divs.
+            #    Each press moves ~one viewport height (~2000px on this device).
+            #    Close any overlay that pops up between passes.
+            _pgdn(), _wait(1),
+            _pgdn(), _wait(1),
+            _close(), _wait(1),
+            _pgdn(), _wait(1),
+            _pgdn(), _wait(2),
+            _close(), _wait(1),
 
-            # 2. Tap IconCaptcha to activate and load the icon images
+            # 4. Tap IconCaptcha to activate and load the icon images
             {
                 "action": "VISION_TAP",
                 "prompt": (
@@ -96,7 +97,7 @@ TASK = Task(
                 "wait_after": 7,
             },
 
-            # 3. Select the icon that appears fewest times
+            # 5. Select the icon that appears fewest times
             {
                 "action": "VISION_TAP",
                 "prompt": (
@@ -108,7 +109,7 @@ TASK = Task(
                 "wait_after": 2,
             },
 
-            # 4. Tap the Claim / Claim Now button
+            # 6. Tap the Claim / Claim Now button
             {
                 "action": "VISION_TAP",
                 "prompt": (
@@ -120,7 +121,7 @@ TASK = Task(
                 "wait_after": 3,
             },
 
-            # 5. Wait for success toast
+            # 7. Wait for success toast
             {
                 "action":          "WAIT_FOR_UI",
                 "text":            "Success",
