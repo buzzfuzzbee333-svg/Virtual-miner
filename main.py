@@ -6,6 +6,7 @@ Commands: start  status  scores  run  toggle  payout  generate  chat
 
 import argparse
 import asyncio
+import importlib.util
 import sys
 import time
 from pathlib import Path
@@ -17,8 +18,27 @@ from core.logger import RunLogger
 from core.scorer import Scorer
 from core.scheduler import Scheduler
 
+_TASKS_DIR = Path(__file__).parent / "tasks"
+
+
+def _refresh_tasks():
+    """Import every tasks/*.py and re-register its TASK object into the DB."""
+    registry = TaskRegistry()
+    for task_file in sorted(_TASKS_DIR.glob("*.py")):
+        if task_file.name.startswith("_"):
+            continue
+        try:
+            spec = importlib.util.spec_from_file_location("_vm_task", task_file)
+            mod  = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            if hasattr(mod, "TASK"):
+                registry.register(mod.TASK)
+        except Exception as exc:
+            print(f"  [warn] could not load {task_file.name}: {exc}")
+
 
 def cmd_status(_args):
+    _refresh_tasks()
     registry = TaskRegistry()
     logger = RunLogger()
 
@@ -71,6 +91,7 @@ def cmd_scores(_args):
 
 
 def cmd_run(args):
+    _refresh_tasks()
     registry = TaskRegistry()
     task = registry.get_by_name(args.name)
 
@@ -134,6 +155,7 @@ def cmd_chat(_args):
 
 
 def cmd_start(args):
+    _refresh_tasks()
     scheduler = Scheduler(
         poll_interval=args.poll,
         audit_interval=args.audit,
